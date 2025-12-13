@@ -8,207 +8,282 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 )
 
-// Структуры для JSON
-type Request struct {
-	Text string `json:"text"`
+//тест в браузере:
+// fetch("/api/analyze", {
+//     method: "POST",
+//     headers: {"Content-Type": "application/json"},
+//     body: JSON.stringify({text: "Тест из консоли DevTools"})
+// }).then(r => r.json()).then(console.log)
+// Promise {<pending>}
+// {charCount: 24, wordCount: 4, sentenceCount: 1, frequentWords: Array(2), readingTime: 'меньше минуты'}
+
+// ==================== Domain Layer (Entities) ====================
+
+// TextAnalysis представляет результат анализа текста
+type TextAnalysis struct {
+	CharCount     int
+	WordCount     int
+	SentenceCount int
+	FrequentWords []WordFrequency
+	ReadingTime   string
 }
 
+// WordFrequency представляет слово и его частоту
 type WordFrequency struct {
-	Word  string `json:"word"`
-	Count int    `json:"count"`
+	Word  string
+	Count int
 }
 
-type Response struct {
-	CharCount     int             `json:"charCount"`
-	WordCount     int             `json:"wordCount"`
-	SentenceCount int             `json:"sentenceCount"`
-	FrequentWords []WordFrequency `json:"frequentWords"`
-	ReadingTime   string          `json:"readingTime"`
+// ==================== Use Case Layer ====================
+
+// TextAnalyzer - интерфейс для анализа текста
+type TextAnalyzer interface {
+	Analyze(text string) TextAnalysis
 }
 
-// Middleware для CORS
-func enableCORS(w http.ResponseWriter) {
+// DefaultAnalyzer - реализация анализатора текста
+type DefaultAnalyzer struct{}
+
+// Analyze выполняет анализ текста
+func (a *DefaultAnalyzer) Analyze(text string) TextAnalysis {
+	charCount := countCharacters(text)
+	words := extractWords(text)
+	wordCount := len(words)
+	sentenceCount := countSentences(text)
+	frequentWords := getFrequentWords(words, 2)
+	readingTime := calculateReadingTimeSimple(wordCount, charCount)
+
+	return TextAnalysis{
+		CharCount:     charCount,
+		WordCount:     wordCount,
+		SentenceCount: sentenceCount,
+		FrequentWords: frequentWords,
+		ReadingTime:   readingTime,
+	}
+}
+
+// ==================== Infrastructure Layer ====================
+
+// HTTPHandler обрабатывает HTTP запросы
+type HTTPHandler struct {
+	analyzer TextAnalyzer
+}
+
+// NewHTTPHandler создает новый HTTP обработчик
+func NewHTTPHandler(analyzer TextAnalyzer) *HTTPHandler {
+	return &HTTPHandler{analyzer: analyzer}
+}
+
+// AnalyzeTextHandler обработчик для анализа текста
+func (h *HTTPHandler) AnalyzeTextHandler(w http.ResponseWriter, r *http.Request) {
+	// CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-}
 
-// Обработчик для /api/analyze
-func analyzeHandler(w http.ResponseWriter, r *http.Request) {
-	// Добавляем CORS заголовки
-	enableCORS(w)
-
-	// Обрабатываем OPTIONS запрос (preflight CORS)
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	// Проверяем метод
 	if r.Method != "POST" {
-		http.Error(w, "Только POST-запросы поддерживаются", http.StatusMethodNotAllowed)
+		sendJSONError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		return
 	}
 
-	// Проверяем Content-Type
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		http.Error(w, "Content-Type должен быть application/json", http.StatusBadRequest)
+	var request struct {
+		Text string `json:"text"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		sendJSONError(w, http.StatusBadRequest, "Неверный JSON")
 		return
 	}
 
-	// Декодируем JSON
-	var req Request
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Неверный JSON формат", http.StatusBadRequest)
-		return
+	// Используем use case
+	analysis := h.analyzer.Analyze(request.Text)
+
+	// Преобразуем в DTO для HTTP
+	response := map[string]interface{}{
+		"charCount":     analysis.CharCount,
+		"wordCount":     analysis.WordCount,
+		"sentenceCount": analysis.SentenceCount,
+		"readingTime":   analysis.ReadingTime,
+		"frequentWords": convertToMap(analysis.FrequentWords),
 	}
 
-	// Проверяем, что текст не пустой
-	if strings.TrimSpace(req.Text) == "" {
-		http.Error(w, "Текст не может быть пустым", http.StatusBadRequest)
-		return
-	}
-
-	// Анализируем текст
-	result := analyzeText(req.Text)
-
-	// Отправляем ответ
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	sendJSON(w, http.StatusOK, response)
 }
 
-// Функция анализа текста
-func analyzeText(text string) Response {
-	// 1. Подсчет символов
-	charCount := len([]rune(text))
+// ==================== Business Logic (Pure Functions) ====================
 
-	// 2. Подсчет слов
-	words := strings.Fields(text)
-	wordCount := len(words)
+// countCharacters подсчитывает количество символов
+func countCharacters(text string) int {
+	return len([]rune(text))
+}
 
-	// 3. Подсчет предложений
-	sentenceCount := 0
-	sentenceEndings := regexp.MustCompile(`[.!?]+`)
-	sentences := sentenceEndings.Split(text, -1)
+// extractWords извлекает слова из текста
+func extractWords(text string) []string {
+	return strings.Fields(text)
+}
+
+// countSentences подсчитывает количество предложений
+func countSentences(text string) int {
+	sentenceRegex := regexp.MustCompile(`[.!?]+`)
+	sentences := sentenceRegex.Split(text, -1)
+
+	count := 0
 	for _, s := range sentences {
 		if strings.TrimSpace(s) != "" {
-			sentenceCount++
+			count++
 		}
 	}
+	return count
+}
 
-	// 4. Частотность слов
-	wordFreq := make(map[string]int)
+// getFrequentWords возвращает самые частые слова
+func getFrequentWords(words []string, topN int) []WordFrequency {
+	// Подсчет частоты
+	freqMap := make(map[string]int)
 	for _, word := range words {
-		// Очищаем слово от знаков препинания
-		cleanWord := strings.ToLower(word)
-		cleanWord = strings.Trim(cleanWord, ".,!?;:\"'()[]{}")
+		cleanWord := cleanWord(word)
 		if cleanWord != "" {
-			wordFreq[cleanWord]++
+			freqMap[cleanWord]++
 		}
 	}
 
-	// 5. Топ-2 самых частых слов
-	frequentWords := make([]WordFrequency, 0)
-	for word, count := range wordFreq {
-		frequentWords = append(frequentWords, WordFrequency{Word: word, Count: count})
+	// Преобразование в слайс для сортировки
+	var frequencies []WordFrequency
+	for word, count := range freqMap {
+		frequencies = append(frequencies, WordFrequency{Word: word, Count: count})
 	}
 
-	// Сортируем по убыванию частоты
-	sort.Slice(frequentWords, func(i, j int) bool {
-		if frequentWords[i].Count == frequentWords[j].Count {
-			return frequentWords[i].Word < frequentWords[j].Word
+	// Сортировка по убыванию частоты, при равенстве - по алфавиту
+	sort.Slice(frequencies, func(i, j int) bool {
+		if frequencies[i].Count == frequencies[j].Count {
+			return frequencies[i].Word < frequencies[j].Word
 		}
-		return frequentWords[i].Count > frequentWords[j].Count
+		return frequencies[i].Count > frequencies[j].Count
 	})
 
-	// Берем только топ-2
-	topCount := 2
-	if len(frequentWords) < topCount {
-		topCount = len(frequentWords)
+	// Возвращаем топ N
+	if topN > len(frequencies) {
+		topN = len(frequencies)
 	}
-	topWords := frequentWords[:topCount]
 
-	// 6. Время чтения (200 слов в минуту)
-	readingTime := ""
+	return frequencies[:topN]
+}
+
+// cleanWord очищает слово от знаков препинания
+func cleanWord(word string) string {
+	clean := strings.ToLower(word)
+	trimChars := ".,!?;:\"'()[]{}"
+	return strings.Trim(clean, trimChars)
+}
+
+// calculateReadingTimeSimple простой, но улучшенный расчёт
+func calculateReadingTimeSimple(wordCount, charCount int) string {
 	if wordCount == 0 {
-		readingTime = "0 минут"
-	} else {
-		minutes := float64(wordCount) / 200.0
-		if minutes < 1 {
-			readingTime = "меньше минуты"
-		} else if minutes < 2 {
-			readingTime = "1 минута"
-		} else if minutes < 5 {
-			readingTime = fmt.Sprintf("%.0f минуты", minutes)
-		} else {
-			readingTime = fmt.Sprintf("%.0f минут", minutes)
+		return "0 минут"
+	}
+
+	// Рассчитываем среднюю длину слова
+	averageWordLength := float64(charCount) / float64(wordCount)
+
+	// Базовая скорость чтения
+	baseSpeed := 200.0 // слов в минуту
+
+	// Корректируем скорость в зависимости от средней длины слова
+	// Формула: чем длиннее слова, тем медленнее читаем
+	// Эмпирическая формула: speed = 200 * (5 / averageWordLength)
+	// Где 5 - средняя длина слова в русском языке
+	if averageWordLength > 0 {
+		adjustedSpeed := baseSpeed * (5.0 / averageWordLength)
+		// Ограничиваем разумными пределами
+		if adjustedSpeed < 100 {
+			adjustedSpeed = 100
 		}
+		if adjustedSpeed > 300 {
+			adjustedSpeed = 300
+		}
+		baseSpeed = adjustedSpeed
 	}
 
-	return Response{
-		CharCount:     charCount,
-		WordCount:     wordCount,
-		SentenceCount: sentenceCount,
-		FrequentWords: topWords,
-		ReadingTime:   readingTime,
+	minutes := float64(wordCount) / baseSpeed
+
+	// Форматирование результата
+	if minutes < 1 {
+		return "меньше минуты"
+	}
+
+	// Правильное склонение минут для русского языка
+	lastDigit := int(minutes) % 10
+	lastTwoDigits := int(minutes) % 100
+
+	if lastTwoDigits >= 11 && lastTwoDigits <= 19 {
+		return fmt.Sprintf("%.0f минут", minutes)
+	}
+
+	switch lastDigit {
+	case 1:
+		return fmt.Sprintf("%.0f минута", minutes)
+	case 2, 3, 4:
+		return fmt.Sprintf("%.0f минуты", minutes)
+	default:
+		return fmt.Sprintf("%.0f минут", minutes)
 	}
 }
 
-// Простой обработчик для корня
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
+// ==================== Utility Functions ====================
+
+// convertToMap преобразует WordFrequency в []map[string]int для JSON
+func convertToMap(words []WordFrequency) []map[string]int {
+	result := make([]map[string]int, len(words))
+	for i, wf := range words {
+		result[i] = map[string]int{wf.Word: wf.Count}
 	}
-
-	fmt.Fprintf(w, `Анализатор текста API
-
-Эндпоинт: POST /api/analyze
-
-Пример использования через curl:
-curl -X POST http://localhost:8080/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Привет, мир! Это тестовый текст."}'
-
-Или через PowerShell:
-Invoke-RestMethod -Uri "http://localhost:8080/api/analyze" -Method Post 
-  -ContentType "application/json" 
-  -Body '{\"text\":\"Привет, мир! Это тестовый текст.\"}'
-`)
+	return result
 }
+
+// sendJSON отправляет JSON ответ
+func sendJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+// sendJSONError отправляет ошибку в формате JSON
+func sendJSONError(w http.ResponseWriter, status int, message string) {
+	sendJSON(w, status, map[string]string{"error": message})
+}
+
+// ==================== Main Application ====================
 
 func main() {
+	// Инициализация зависимостей
+	analyzer := &DefaultAnalyzer{}
+	handler := NewHTTPHandler(analyzer)
+
 	// Настройка маршрутов
-	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/api/analyze", analyzeHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/analyze", handler.AnalyzeTextHandler)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		sendJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
 
 	// Настройка сервера
 	server := &http.Server{
-		Addr:         ":8080",
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:    ":8082",
+		Handler: mux,
 	}
 
-	// Запуск сервера
-	log.Println("Сервер запущен на http://localhost:8080")
-	log.Println("Для тестирования используйте команды ниже:")
-	log.Println()
-	log.Println("curl:")
-	log.Println(`curl -X POST http://localhost:8080/api/analyze \`)
+	log.Println("🚀 Сервер запущен на порту 8082")
+	log.Println("📌 Пример запроса:")
+	log.Println(`curl -X POST http://localhost:8082/api/analyze \`)
 	log.Println(`  -H "Content-Type: application/json" \`)
-	log.Println(`  -d '{"text":"Привет, мир! Это тестовый текст."}'`)
-	log.Println()
-	log.Println("PowerShell:")
-	log.Println(`Invoke-RestMethod -Uri "http://localhost:8080/api/analyze" -Method Post \`)
-	log.Println(`  -ContentType "application/json" \`)
-	log.Println(`  -Body '{\"text\":\"Привет, мир! Это тестовый текст.\"}'`)
-	log.Println()
+	log.Println(`  -d '{"text":"Привет мир!"}'`)
 
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal("Ошибка запуска сервера:", err)
-	}
+	log.Fatal(server.ListenAndServe())
 }
