@@ -54,16 +54,29 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('word-count').textContent = data.wordCount || 0;
             document.getElementById('sentence-count').textContent = data.sentenceCount || 0;
             document.getElementById('message').textContent = data.message || 'Анализ завершен';
+            document.getElementById('reading-time').textContent = data.readingTime || '0 минут';
             
             // Очищаем и заполняем список частоты слов
             const wordFrequencyDiv = document.getElementById('word-frequency');
             wordFrequencyDiv.innerHTML = '';
-            
-            if (data.frequentWords&& typeof data.frequentWords === 'object') {
-                // Преобразуем объект в массив и сортируем по убыванию частоты
-                const wordFrequencyArray = Object.entries(data.frequentWords)
-                    .sort((a, b) => b[1] - a[1]);
-                
+
+            // Преобразуем массив объектов в плоский объект для фронтенда
+            let wordFrequencyObj = {};
+            if (Array.isArray(data.frequentWords)) {
+                data.frequentWords.forEach(item => {
+                    const word = Object.keys(item)[0];
+                    const count = item[word];
+                    wordFrequencyObj[word] = count;
+                });
+            } else if (typeof data.frequentWords === 'object') {
+                wordFrequencyObj = data.frequentWords;
+            }
+
+            // Преобразуем объект в массив и сортируем по убыванию частоты
+            const wordFrequencyArray = Object.entries(wordFrequencyObj)
+                .sort((a, b) => b[1] - a[1]);
+
+            if (wordFrequencyArray.length > 0) {
                 wordFrequencyArray.forEach(([word, count]) => {
                     const wordItem = document.createElement('div');
                     wordItem.className = 'word-item';
