@@ -1,0 +1,112 @@
+document.addEventListener('DOMContentLoaded', function() {
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const textInput = document.getElementById('text-input');
+    const resultsDiv = document.getElementById('results');
+    const loader = document.getElementById('loader');
+    const errorMessageDiv = document.getElementById('error-message');
+    
+    // Устанавливаем таймаут для запроса (3 секунды)
+    const REQUEST_TIMEOUT = 10000; // 3 секунды
+    
+    // Пример текста по умолчанию
+    textInput.value = "Привет! Это пример текста для анализа.";
+    
+    analyzeBtn.addEventListener('click', async function() {
+        const text = textInput.value.trim();
+        
+        if (!text) {
+            alert('Пожалуйста, введите текст для анализа');
+            return;
+        }
+        
+        // Скрываем предыдущие результаты и ошибки
+        resultsDiv.style.display = 'none';
+        errorMessageDiv.style.display = 'none';
+        
+        // Показываем загрузку
+        loader.style.display = 'block';
+        
+        // Создаем AbortController для возможности отмены запроса
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+        
+        try {
+            // Отправляем запрос на бэкенд с таймаутом
+            const response = await fetch('http://localhost:8082/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text }),
+                signal: controller.signal // Добавляем возможность прерывания
+            });
+            
+            clearTimeout(timeoutId); // Очищаем таймаут, если запрос успешен
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Обновляем интерфейс с полученными данными
+            document.getElementById('char-count').textContent = data.charCount || 0;
+            document.getElementById('word-count').textContent = data.wordCount || 0;
+            document.getElementById('sentence-count').textContent = data.sentenceCount || 0;
+            document.getElementById('message').textContent = data.message || 'Анализ завершен';
+            
+            // Очищаем и заполняем список частоты слов
+            const wordFrequencyDiv = document.getElementById('word-frequency');
+            wordFrequencyDiv.innerHTML = '';
+            
+            if (data.frequency && typeof data.frequency === 'object') {
+                // Преобразуем объект в массив и сортируем по убыванию частоты
+                const wordFrequencyArray = Object.entries(data.frequency)
+                    .sort((a, b) => b[1] - a[1]);
+                
+                wordFrequencyArray.forEach(([word, count]) => {
+                    const wordItem = document.createElement('div');
+                    wordItem.className = 'word-item';
+                    wordItem.innerHTML = `
+                        <span class="word">${word}</span>
+                        <span class="count">${count}</span>
+                    `;
+                    wordFrequencyDiv.appendChild(wordItem);
+                });
+            } else {
+                wordFrequencyDiv.innerHTML = '<p style="text-align: center; color: #666;">Нет данных о частоте слов</p>';
+            }
+            
+            // Показываем результаты, скрываем загрузку
+            loader.style.display = 'none';
+            resultsDiv.style.display = 'block';
+            
+        } catch (error) {
+            console.error('Ошибка:', error);
+            
+            // Очищаем таймаут в случае ошибки
+            clearTimeout(timeoutId);
+            
+            // Скрываем загрузку
+            loader.style.display = 'none';
+            
+            // Показываем сообщение об ошибке
+            errorMessageDiv.style.display = 'block';
+            
+            // Меняем текст ошибки в зависимости от типа
+            const errorTitle = errorMessageDiv.querySelector('.error-title');
+            const errorText = errorMessageDiv.querySelector('p');
+            
+            if (error.name === 'AbortError') {
+                errorTitle.textContent = '⚠️ Превышено время ожидания';
+                errorText.innerHTML = `Сервер не ответил за ${REQUEST_TIMEOUT/1000} секунд. Пожалуйста:<br>
+                    1. Проверьте, запущен ли сервер на localhost:8082<br>
+                    2. Убедитесь, что сервер обрабатывает запросы<br>
+                    3. Попробуйте позже`;
+            } else {
+                errorTitle.textContent = '⚠️ Ошибка соединения';
+                errorText.innerHTML = `Не удалось подключиться к серверу:<br>${error.message}`;
+            }
+        }
+    });
+});

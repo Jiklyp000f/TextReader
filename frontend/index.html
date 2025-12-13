@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Анализатор текста</title>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Анализатор текста</h1>
+            <p class="subtitle">Проанализируйте ваш текст: символы, слова, предложения и частоту слов</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <label for="text-input" class="input-label">Введите текст для анализа:</label>
+                <textarea id="text-input" placeholder="Введите или вставьте ваш текст здесь..."></textarea>
+                <button id="analyze-btn" class="btn">Анализировать текст</button>
+                
+                <div class="loader" id="loader">
+                    <div class="spinner"></div>
+                    <p>Анализируем текст...</p>
+                </div>
+            </div>
+            
+            <div class="results" id="results">
+                <h2 class="section-title">Результаты анализа</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Символов</div>
+                        <div class="stat-value" id="char-count">0</div>
+                        <div class="stat-desc">Включая пробелы</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-label">Слов</div>
+                        <div class="stat-value" id="word-count">0</div>
+                        <div class="stat-desc">Уникальных и повторяющихся</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-label">Предложений</div>
+                        <div class="stat-value" id="sentence-count">0</div>
+                        <div class="stat-desc">По разделителям . ! ?</div>
+                    </div>
+                </div>
+                
+                <h3 class="section-title">Частота слов</h3>
+                <div class="word-frequency" id="word-frequency">
+                    <!-- Слова будут добавлены с помощью JS -->
+                </div>
+                
+                <div class="message" id="message">
+                    <!-- Сообщение от сервера -->
+                </div>
+            </div>
+            
+            <!-- Новый блок для сообщения об ошибке -->
+            <div class="error-message" id="error-message" style="display: none;">
+                <div class="stat-card" style="background: #fff0f0; border-left-color: #ff6b6b;">
+                    <div class="stat-label" style="color: #d63031;">Ошибка</div>
+                    <div class="stat-value" style="color: #d63031;">Сервер недоступен</div>
+                    <div class="stat-desc">Пожалуйста, проверьте подключение или повторите попытку позже</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
