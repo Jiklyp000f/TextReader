@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Отправляем запрос на бэкенд с таймаутом
-            const response = await fetch('http://localhost:8082/analyze', {
+            const response = await fetch('http://localhost:8082/api/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -59,9 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const wordFrequencyDiv = document.getElementById('word-frequency');
             wordFrequencyDiv.innerHTML = '';
             
-            if (data.frequency && typeof data.frequency === 'object') {
+            if (data.frequentWords&& typeof data.frequentWords === 'object') {
                 // Преобразуем объект в массив и сортируем по убыванию частоты
-                const wordFrequencyArray = Object.entries(data.frequency)
+                const wordFrequencyArray = Object.entries(data.frequentWords)
                     .sort((a, b) => b[1] - a[1]);
                 
                 wordFrequencyArray.forEach(([word, count]) => {
