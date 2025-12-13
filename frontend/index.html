@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" href="style.css">
     <title>Анализатор текста</title>
-    </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>📊 Анализатор текста</h1>
+            <h1>Анализатор текста</h1>
             <p class="subtitle">Проанализируйте ваш текст: символы, слова, предложения и частоту слов</p>
         </header>
         
@@ -58,7 +57,17 @@
                     <!-- Сообщение от сервера -->
                 </div>
             </div>
+            
+            <!-- Новый блок для сообщения об ошибке -->
+            <div class="error-message" id="error-message" style="display: none;">
+                <div class="stat-card" style="background: #fff0f0; border-left-color: #ff6b6b;">
+                    <div class="stat-label" style="color: #d63031;">Ошибка</div>
+                    <div class="stat-value" style="color: #d63031;">Сервер недоступен</div>
+                    <div class="stat-desc">Пожалуйста, проверьте подключение или повторите попытку позже</div>
+                </div>
+            </div>
         </div>
     </div>
+    <script src="script.js"></script>
 </body>
 </html>
