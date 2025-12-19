@@ -69,6 +69,129 @@
             border-color: #4b6cb7;
         }
         
+        .delimiter-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e1e5ee;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            cursor: pointer;
+            accent-color: #4b6cb7;
+        }
+        
+        .delimiter-input-wrapper {
+            margin-top: 15px;
+            position: relative;
+        }
+        
+        .delimiter-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 0.95rem;
+        }
+        
+        .tooltip-trigger {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+            cursor: help;
+        }
+        
+        .info-icon {
+            font-size: 1.1rem;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .tooltip-trigger:hover .info-icon {
+            opacity: 1;
+        }
+        
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            margin-bottom: 8px;
+            padding: 12px 15px;
+            background: #2c3e50;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            width: 300px;
+            max-width: calc(100vw - 40px);
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            animation: fadeInTooltip 0.2s;
+            pointer-events: none;
+        }
+        
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 20px;
+            border: 6px solid transparent;
+            border-top-color: #2c3e50;
+        }
+        
+        @media (max-width: 768px) {
+            .tooltip {
+                left: auto;
+                right: 0;
+            }
+            
+            .tooltip::after {
+                left: auto;
+                right: 20px;
+            }
+        }
+        
+        @keyframes fadeInTooltip {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        #delimiter-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5ee;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        #delimiter-input:focus {
+            outline: none;
+            border-color: #4b6cb7;
+        }
+        
         .btn {
             background: linear-gradient(to right, #4b6cb7, #182848);
             color: white;
@@ -220,5 +343,28 @@
             
             .stats-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .delimiter-section {
+                padding: 12px;
+            }
+            
+            .checkbox-label {
+                font-size: 0.9rem;
+            }
+            
+            .tooltip {
+                width: calc(100vw - 60px);
+                max-width: 280px;
+                font-size: 0.8rem;
+                padding: 10px 12px;
+            }
+            
+            .tooltip::after {
+                left: 15px;
+            }
+            
+            .delimiter-label {
+                font-size: 0.9rem;
             }
         }

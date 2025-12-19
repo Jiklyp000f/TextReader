@@ -17,6 +17,27 @@
             <div class="input-section">
                 <label for="text-input" class="input-label">Введите текст для анализа:</label>
                 <textarea id="text-input" placeholder="Введите или вставьте ваш текст здесь..."></textarea>
+                
+                <div class="delimiter-section">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="use-custom-delimiter" />
+                        <span>Использовать кастомный разделитель предложений</span>
+                    </label>
+                    
+                    <div class="delimiter-input-wrapper" id="delimiter-wrapper" style="display: none;">
+                        <label for="delimiter-input" class="delimiter-label">
+                            Разделитель предложений:
+                            <span class="tooltip-trigger">
+                                <span class="info-icon">ℹ️</span>
+                            </span>
+                        </label>
+                        <input type="text" id="delimiter-input" placeholder="Например: . или ;" maxlength="10" />
+                        <div class="tooltip" id="delimiter-tooltip">
+                            Введите символ, который будет использоваться для разделения предложений. Например: точка (.), точка с запятой (;), или любой другой символ. Если поле пустое, будут использоваться стандартные разделители: точка, восклицательный и вопросительный знаки (. ! ?)
+                        </div>
+                    </div>
+                </div>
+                
                 <button id="analyze-btn" class="btn">Анализировать текст</button>
                 
                 <div class="loader" id="loader">
@@ -44,7 +65,7 @@
                     <div class="stat-card">
                         <div class="stat-label">Предложений</div>
                         <div class="stat-value" id="sentence-count">0</div>
-                        <div class="stat-desc">По разделителям . ! ?</div>
+                        <div class="stat-desc">По разделителям</div>
                     </div>
                 </div>
                 <h3 class="section-title">Время чтения</h3>

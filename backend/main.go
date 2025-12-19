@@ -10,17 +10,6 @@ import (
 	"strings"
 )
 
-//тест в браузере:
-// fetch("/api/analyze", {
-//     method: "POST",
-//     headers: {"Content-Type": "application/json"},
-//     body: JSON.stringify({text: "Тест из консоли DevTools"})
-// }).then(r => r.json()).then(console.log)
-// Promise {<pending>}
-// {charCount: 24, wordCount: 4, sentenceCount: 1, frequentWords: Array(2), readingTime: 'меньше минуты'}
-
-// ==================== Domain Layer (Entities) ====================
-
 // TextAnalysis представляет результат анализа текста
 type TextAnalysis struct {
 	CharCount     int
@@ -40,18 +29,18 @@ type WordFrequency struct {
 
 // TextAnalyzer - интерфейс для анализа текста
 type TextAnalyzer interface {
-	Analyze(text string) TextAnalysis
+	Analyze(text string, delimiter string) TextAnalysis
 }
 
 // DefaultAnalyzer - реализация анализатора текста
 type DefaultAnalyzer struct{}
 
 // Analyze выполняет анализ текста
-func (a *DefaultAnalyzer) Analyze(text string) TextAnalysis {
+func (a *DefaultAnalyzer) Analyze(text string, delimiter string) TextAnalysis {
 	charCount := countCharacters(text)
 	words := extractWords(text)
 	wordCount := len(words)
-	sentenceCount := countSentences(text)
+	sentenceCount := countSentences(text, delimiter)
 	frequentWords := getFrequentWords(words, 2)
 	readingTime := calculateReadingTimeSimple(wordCount, charCount)
 
@@ -94,7 +83,8 @@ func (h *HTTPHandler) AnalyzeTextHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	var request struct {
-		Text string `json:"text"`
+		Text      string `json:"text"`
+		Delimiter string `json:"delimiter"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -103,7 +93,7 @@ func (h *HTTPHandler) AnalyzeTextHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Используем use case
-	analysis := h.analyzer.Analyze(request.Text)
+	analysis := h.analyzer.Analyze(request.Text, request.Delimiter)
 
 	// Преобразуем в DTO для HTTP
 	response := map[string]interface{}{
@@ -130,13 +120,27 @@ func extractWords(text string) []string {
 }
 
 // countSentences подсчитывает количество предложений
-func countSentences(text string) int {
-	sentenceRegex := regexp.MustCompile(`[.!?]+`)
-	sentences := sentenceRegex.Split(text, -1)
-
+// Если delimiter пустой, используется стандартная логика [.!?]+
+// Если delimiter указан, используется указанный символ(ы) для разделения
+func countSentences(text string, delimiter string) int {
+	if delimiter == "" {
+		// Стандартная логика: используем . ! ?
+		sentenceRegex := regexp.MustCompile(`[.!?]+`)
+		sentences := sentenceRegex.Split(text, -1)
+		count := 0
+		for _, s := range sentences {
+			if strings.TrimSpace(s) != "" {
+				count++
+			}
+		}
+		return count
+	}
+	
+	// Пользовательский разделитель: просто разбиваем по указанному символу
+	parts := strings.Split(text, delimiter)
 	count := 0
-	for _, s := range sentences {
-		if strings.TrimSpace(s) != "" {
+	for _, part := range parts {
+		if strings.TrimSpace(part) != "" {
 			count++
 		}
 	}

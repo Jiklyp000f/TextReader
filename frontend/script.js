@@ -4,12 +4,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsDiv = document.getElementById('results');
     const loader = document.getElementById('loader');
     const errorMessageDiv = document.getElementById('error-message');
+    const useCustomDelimiterCheckbox = document.getElementById('use-custom-delimiter');
+    const delimiterWrapper = document.getElementById('delimiter-wrapper');
+    const delimiterInput = document.getElementById('delimiter-input');
+    const tooltipTrigger = document.querySelector('.tooltip-trigger');
+    const tooltip = document.getElementById('delimiter-tooltip');
     
     // Устанавливаем таймаут для запроса (3 секунды)
     const REQUEST_TIMEOUT = 10000; // 3 секунды
     
     // Пример текста по умолчанию
     textInput.value = "Привет! Это пример текста для анализа.";
+    
+    // Обработчик чекбокса для показа/скрытия поля ввода разделителя
+    useCustomDelimiterCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            delimiterWrapper.style.display = 'block';
+        } else {
+            delimiterWrapper.style.display = 'none';
+            delimiterInput.value = '';
+        }
+    });
+    
+    // Обработчик для показа tooltip при наведении
+    if (tooltipTrigger && tooltip) {
+        tooltipTrigger.addEventListener('mouseenter', function() {
+            tooltip.style.display = 'block';
+        });
+        
+        tooltipTrigger.addEventListener('mouseleave', function() {
+            tooltip.style.display = 'none';
+        });
+    }
     
     analyzeBtn.addEventListener('click', async function() {
         const text = textInput.value.trim();
@@ -18,6 +44,9 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Пожалуйста, введите текст для анализа');
             return;
         }
+        
+        // Получаем разделитель: если чекбокс отмечен, берем значение из поля, иначе пустую строку
+        const delimiter = useCustomDelimiterCheckbox.checked ? delimiterInput.value.trim() : '';
         
         // Скрываем предыдущие результаты и ошибки
         resultsDiv.style.display = 'none';
@@ -37,7 +66,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text: text }),
+                body: JSON.stringify({ 
+                    text: text,
+                    delimiter: delimiter
+                }),
                 signal: controller.signal // Добавляем возможность прерывания
             });
             
